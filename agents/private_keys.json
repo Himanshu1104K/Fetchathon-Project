@@ -1,0 +1,14 @@
+{
+    "DataGenerator": {
+        "identity_key": "2d2afbda249dbde4dca8e69589cb0ce3ed9b442886c9ba51800e69a5711106a6",
+        "wallet_key": "3ooav/7lD1s4t8/eQUHbEtj8rrEJ4yfeg0cIDZKXQ/o="
+    },
+    "PredictionAgent": {
+        "identity_key": "fe4f8ea4e1deab813a3af5578ad6d74bfd8c5cea39a4fba738cd6efbbf2d711c",
+        "wallet_key": "pY5L5LRYW+xVZHhXIvhPzr3+kmrb3FBMwBzW+dpKDyg="
+    },
+    "CommunicationAgent": {
+        "identity_key": "f1003674cee86cfe8e39e9e166fbbc3f99ec50c4ef1fa2e78fb153091b4f6d59",
+        "wallet_key": "UNt210KNY3n6UI6HvyIAEOjTHj5LIrqPXXhvOy2uw0M="
+    }
+}
