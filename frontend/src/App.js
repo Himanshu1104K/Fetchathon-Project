@@ -34,7 +34,7 @@ function App() {
 
   useEffect(() => {
     fetchGraph();
-    const interval = setInterval(fetchGraph, 10000); // Update every 10 seconds
+    const interval = setInterval(fetchGraph,10000); // Update every 10 seconds
     return () => clearInterval(interval);
   }, []);
 
@@ -131,7 +131,7 @@ function App() {
               <img className="p-2"
                 src={graphUrl}
                 alt="Actual vs Predicted Efficiency"
-                style={{ maxWidth: "100%", height: "auto" ,borderRadius:"30px"}}
+                style={{ maxWidth: "100%", height: "auto", borderRadius: "30px" }}
               />
             ) : (
               <p>Loading graph...</p>
