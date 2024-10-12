@@ -1,7 +1,6 @@
 
 from uagents import Agent, Context
 import numpy as np
-import asyncio
 
 from common import Message
 
