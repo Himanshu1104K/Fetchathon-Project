@@ -1,10 +1,12 @@
+# communication_agent.py
+
 from uagents import Agent, Context, Bureau
 from fastapi import FastAPI, Depends, HTTPException, status, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from jose import JWTError, jwt
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import matplotlib.pyplot as plt
 import io
 import os
@@ -12,7 +14,7 @@ import uvicorn
 import asyncio
 
 # JWT Constants
-JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "fallback-default-key")
+JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "fallback-default-key")  # Ensure to set this in production
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
@@ -21,15 +23,28 @@ app = FastAPI()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
 # Shared data between agents and HTTP
-efficiency_data = []
+shared_storage = {
+    "health_metrics": {
+        "heart_rate": [],
+        "blood_pressure": [],
+        "temperature": [],
+        "moisture": [],
+        "body_water_content": [],
+        "fatigue_level": [],
+        "drowsiness_level": []
+    },
+    "latest_prediction": None
+}
+
+predictions = []
 
 # JWT utility functions
 def create_access_token(data: dict, expires_delta: timedelta = None):
     to_encode = data.copy()
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=15)
+        expire = datetime.now(timezone.utc) + timedelta(minutes=15)
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, JWT_SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
@@ -55,7 +70,7 @@ async def get_current_user(request: Request, token: str = Depends(oauth2_scheme)
 # Enable CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # Adjust in production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -80,21 +95,33 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
 
 @app.get("/data")
 async def get_data(request: Request, current_user: str = Depends(get_current_user)):
-    try:
-        return JSONResponse(
-            content={"efficiency_data": efficiency_data}, status_code=200
+    return JSONResponse(
+        content=shared_storage["health_metrics"], status_code=200
+    )
+
+@app.get("/prediction")
+async def get_prediction(request: Request, current_user: str = Depends(get_current_user)):
+    latest_prediction = shared_storage["latest_prediction"]
+    
+    if latest_prediction is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No prediction available",
         )
-    except Exception as e:
-        return JSONResponse(content={"error": str(e)}, status_code=500)
+    
+    return {"prediction": latest_prediction}
 
 @app.get("/plot")
 async def plot_graph(request: Request, current_user: str = Depends(get_current_user)):
-    try:
-        if not efficiency_data:
-            return JSONResponse(content={"error": "No data available"}, status_code=400)
+    if not predictions:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No prediction data available to generate the plot.",
+        )
 
+    try:
         fig, ax = plt.subplots(figsize=(8, 6))
-        ax.plot(range(1, len(efficiency_data) + 1), efficiency_data, color="blue")
+        ax.plot(range(1, len(predictions) + 1), predictions, color="blue")
         ax.set_xlabel("Time")
         ax.set_ylabel("Efficiency")
         ax.set_title("Efficiency over Time")
@@ -108,9 +135,10 @@ async def plot_graph(request: Request, current_user: str = Depends(get_current_u
     except Exception as e:
         return JSONResponse(content={"error": str(e)}, status_code=500)
 
-from common import Message
-from Data_generation_agent import agent
-from Prediction_agent import PredictionAgent
+# Importing necessary components for agents
+from common import Message  # Ensure 'common.py' exists and defines Message appropriately
+from Data_generation_agent import agent  # Ensure 'Data_generation_agent.py' exists and defines agent
+from Prediction_agent import PredictionAgent  # Ensure 'Prediction_agent.py' exists and defines PredictionAgent
 
 # Communication Agent for handling data from PredictionAgent
 communication_agent = Agent(name="communication_agent")
@@ -120,11 +148,20 @@ bureau.add(PredictionAgent)
 bureau.add(communication_agent)
 
 @communication_agent.on_message(model=Message)
-async def receive_efficiency(ctx: Context, sender: str, msg: Message):
-    efficiency = ctx.storage.get("latest_prediction")
-    if efficiency is not None:
-        efficiency_data.append(efficiency)
-        print(f"Received Efficiency: {efficiency}")
+async def receive_message(ctx: Context, sender: str, msg: Message):
+    # Update health metrics
+    metrics = msg.metrics  # Adjust based on your Message model
+    for key in shared_storage["health_metrics"].keys():
+        if key in metrics:
+            shared_storage["health_metrics"][key].append(metrics[key])
+    
+    # Update prediction
+    if "prediction" in metrics:
+        shared_storage["latest_prediction"] = metrics["prediction"]
+        predictions.append(metrics["prediction"])
+        print(f"Received Prediction from {sender}: {metrics['prediction']}")
+    else:
+        print(f"No prediction in message from {sender}.")
 
 # Running FastAPI and the Communication Agent
 async def start_fastapi():

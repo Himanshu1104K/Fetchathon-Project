@@ -19,6 +19,7 @@ PredictionAgent = Agent(
     endpoint=["http://127.0.0.1:8001/submit"],  # Ensure this endpoint is correct
 )
 
+
 @PredictionAgent.on_event("startup")
 async def load_model(ctx: Context):
     global model
@@ -33,6 +34,7 @@ async def load_model(ctx: Context):
         ctx._logger.error(f"Error loading model: {e}")
         model = None
     ctx._logger.info(f"PredictionAgent address: {PredictionAgent.address}")
+
 
 @PredictionAgent.on_message(model=Message)
 async def perform_prediction(ctx: Context, sender: str, msg: Message):
@@ -73,13 +75,14 @@ async def perform_prediction(ctx: Context, sender: str, msg: Message):
     except Exception as e:
         ctx._logger.error(f"Prediction failed: {e}")
 
+
 # Initialize the Bureau and add agents
-bureau = Bureau()
-# Ensure 'agent' is correctly imported or defined
-from Data_generation_agent import Get_agent  # Adjust the import as necessary
-data_generator_agent = Get_agent()
-bureau.add(data_generator_agent)
-bureau.add(PredictionAgent)
+# bureau = Bureau()
+# # Ensure 'agent' is correctly imported or defined
+# from Data_generation_agent import Get_agent  # Adjust the import as necessary
+# data_generator_agent = Get_agent()
+# bureau.add(data_generator_agent)
+# bureau.add(PredictionAgent)
 
 if __name__ == "__main__":
-    bureau.run()
+    PredictionAgent.run()
