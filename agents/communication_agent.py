@@ -14,7 +14,9 @@ import uvicorn
 import asyncio
 
 # JWT Constants
-JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "fallback-default-key")  # Ensure to set this in production
+JWT_SECRET_KEY = os.getenv(
+    "JWT_SECRET_KEY", "fallback-default-key"
+)  # Ensure to set this in production
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
@@ -31,12 +33,13 @@ shared_storage = {
         "moisture": [],
         "body_water_content": [],
         "fatigue_level": [],
-        "drowsiness_level": []
+        "drowsiness_level": [],
     },
-    "latest_prediction": None
+    "latest_prediction": None,
 }
 
 predictions = []
+
 
 # JWT utility functions
 def create_access_token(data: dict, expires_delta: timedelta = None):
@@ -48,6 +51,7 @@ def create_access_token(data: dict, expires_delta: timedelta = None):
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, JWT_SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
+
 
 async def get_current_user(request: Request, token: str = Depends(oauth2_scheme)):
     try:
@@ -67,6 +71,7 @@ async def get_current_user(request: Request, token: str = Depends(oauth2_scheme)
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+
 # Enable CORS
 app.add_middleware(
     CORSMiddleware,
@@ -75,6 +80,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 # FastAPI Endpoints
 @app.post("/login")
@@ -93,23 +99,26 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     )
     return {"access_token": access_token, "token_type": "bearer"}
 
+
 @app.get("/data")
 async def get_data(request: Request, current_user: str = Depends(get_current_user)):
-    return JSONResponse(
-        content=shared_storage["health_metrics"], status_code=200
-    )
+    return JSONResponse(content=shared_storage["health_metrics"], status_code=200)
+
 
 @app.get("/prediction")
-async def get_prediction(request: Request, current_user: str = Depends(get_current_user)):
+async def get_prediction(
+    request: Request, current_user: str = Depends(get_current_user)
+):
     latest_prediction = shared_storage["latest_prediction"]
-    
+
     if latest_prediction is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="No prediction available",
         )
-    
+
     return {"prediction": latest_prediction}
+
 
 @app.get("/plot")
 async def plot_graph(request: Request, current_user: str = Depends(get_current_user)):
@@ -135,33 +144,45 @@ async def plot_graph(request: Request, current_user: str = Depends(get_current_u
     except Exception as e:
         return JSONResponse(content={"error": str(e)}, status_code=500)
 
-# Importing necessary components for agents
-from common import Message  # Ensure 'common.py' exists and defines Message appropriately
-from Data_generation_agent import agent  # Ensure 'Data_generation_agent.py' exists and defines agent
-from Prediction_agent import PredictionAgent  # Ensure 'Prediction_agent.py' exists and defines PredictionAgent
 
-# Communication Agent for handling data from PredictionAgent
+# Importing necessary components for agents
+from common import (
+    Message,
+)  # Ensure 'common.py' exists and defines Message appropriately
+from Data_generation_agent import (
+    Get_agent,
+)  # Ensure 'Data_generation_agent.py' exists and defines Get_agent
+from Prediction_agent import (
+    PredictionAgent,
+)  # Ensure 'Prediction_agent.py' exists and defines PredictionAgent
+
 communication_agent = Agent(name="communication_agent")
+# Initialize the CustomBureau instead of the default Bureau
 bureau = Bureau()
-bureau.add(agent)
-bureau.add(PredictionAgent)
-bureau.add(communication_agent)
+bureau.add(communication_agent)  # Add CommunicationAgent first
+bureau.add(Get_agent())  # Add DataGenerator
+bureau.add(PredictionAgent)  # Add PredictionAgent
+
 
 @communication_agent.on_message(model=Message)
 async def receive_message(ctx: Context, sender: str, msg: Message):
+    ctx.logger.info(f"Received message from {sender}: {msg}")
+
     # Update health metrics
-    metrics = msg.metrics  # Adjust based on your Message model
+    metrics = msg.dict()
     for key in shared_storage["health_metrics"].keys():
-        if key in metrics:
+        if key in metrics and metrics[key] is not None:
             shared_storage["health_metrics"][key].append(metrics[key])
-    
+            ctx.logger.info(f"Updated {key}: {shared_storage['health_metrics'][key]}")
+
     # Update prediction
-    if "prediction" in metrics:
+    if "prediction" in metrics and metrics["prediction"] is not None:
         shared_storage["latest_prediction"] = metrics["prediction"]
         predictions.append(metrics["prediction"])
-        print(f"Received Prediction from {sender}: {metrics['prediction']}")
+        ctx.logger.info(f"Received Prediction from {sender}: {metrics['prediction']}")
     else:
-        print(f"No prediction in message from {sender}.")
+        ctx.logger.info(f"No prediction in message from {sender}.")
+
 
 # Running FastAPI and the Communication Agent
 async def start_fastapi():
@@ -169,8 +190,10 @@ async def start_fastapi():
     server = uvicorn.Server(config)
     await server.serve()
 
+
 async def run_agents():
     await bureau.run()
+
 
 # Main entry point
 if __name__ == "__main__":

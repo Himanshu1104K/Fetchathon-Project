@@ -1,7 +1,6 @@
 # Data_generation_agent.py
 from uagents import Agent, Context
 import numpy as np
-
 from common import Message
 
 
@@ -22,9 +21,7 @@ def Get_agent():
 async def initialize_storage(ctx: Context):
     ctx.storage.set("heart_rate", np.random.randint(65, 90))
     ctx.storage.set("blood_pressure", generate_blood_pressure())
-    ctx.storage.set(
-        "temperature", np.random.randint(36, 38)
-    )  # Adjusted to realistic temperature
+    ctx.storage.set("temperature", np.random.randint(36, 38))  # Realistic temperature
     ctx.storage.set("moisture", np.random.randint(0, 100))  # Adjusted range
     ctx.storage.set("body_water_content", np.random.randint(50, 70))  # Adjusted range
     ctx.storage.set("fatigue_level", np.random.randint(0, 100))  # Adjusted range
@@ -54,7 +51,6 @@ async def data_transferring(ctx: Context):
             drowsiness_level=ctx.storage.get("drowsiness_level"),
         ),
     )
-
-
-if __name__ == "__main__":
-    agent.run()
+    ctx.logger.info(
+        f"Sent health metrics to PredictionAgent: {ctx.storage.get('blood_pressure')}"
+    )

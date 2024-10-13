@@ -1,10 +1,10 @@
 # Prediction_agent.py
-
-from uagents import Agent, Context, Bureau
+from uagents import Agent, Context
 import pandas as pd
 import joblib
 import os
 from common import Message
+
 
 # Define the path to the model file
 model_file = os.path.join(
@@ -16,7 +16,7 @@ model = None  # Initialize at module level
 PredictionAgent = Agent(
     name="PredictionAgent",
     seed="prediction_seed",
-    endpoint=["http://127.0.0.1:8001/submit"],  # Ensure this endpoint is correct
+    # Removed endpoint as it's not used in this context
 )
 
 
@@ -25,21 +25,21 @@ async def load_model(ctx: Context):
     global model
     try:
         if not os.path.exists(model_file):
-            ctx._logger.error(f"Model file not found at {model_file}.")
+            ctx.logger.error(f"Model file not found at {model_file}.")
             model = None
             return
         model = joblib.load(model_file)
-        ctx._logger.info("Model loaded successfully.")
+        ctx.logger.info("Model loaded successfully.")
     except Exception as e:
-        ctx._logger.error(f"Error loading model: {e}")
+        ctx.logger.error(f"Error loading model: {e}")
         model = None
-    ctx._logger.info(f"PredictionAgent address: {PredictionAgent.address}")
+    ctx.logger.info(f"PredictionAgent address: {PredictionAgent.address}")
 
 
 @PredictionAgent.on_message(model=Message)
 async def perform_prediction(ctx: Context, sender: str, msg: Message):
     if model is None:
-        ctx._logger.error("Model is not loaded. Cannot perform prediction.")
+        ctx.logger.error("Model is not loaded. Cannot perform prediction.")
         return
 
     try:
@@ -64,25 +64,34 @@ async def perform_prediction(ctx: Context, sender: str, msg: Message):
 
         # Make prediction
         prediction = model.predict(features)[0]
-        ctx._logger.info(f"Latest Prediction: {prediction}")
+        ctx.logger.info(f"Latest Prediction: {prediction}")
 
-        # Store predictions in shared storage for CommunicationAgent
+        # Store predictions in PredictionAgent's storage
         ctx.storage.set("latest_prediction", prediction)
         predictions = ctx.storage.get("predictions") or []
         predictions.append(prediction)
         ctx.storage.set("predictions", predictions)
 
+        # Send prediction to CommunicationAgent
+        from communication_agent import communication_agent
+
+        if communication_agent:
+            await ctx.send(
+                communication_agent.address,
+                Message(
+                    heart_rate=msg.heart_rate,
+                    blood_pressure=msg.blood_pressure,
+                    temperature=msg.temperature,
+                    moisture=msg.moisture,
+                    body_water_content=msg.body_water_content,
+                    fatigue_level=msg.fatigue_level,
+                    drowsiness_level=msg.drowsiness_level,
+                    prediction=prediction,  # Include prediction
+                ),
+            )
+            ctx.logger.info(f"Sent prediction to CommunicationAgent: {prediction}")
+        else:
+            ctx.logger.error("CommunicationAgent not found in Bureau.")
+
     except Exception as e:
-        ctx._logger.error(f"Prediction failed: {e}")
-
-
-# Initialize the Bureau and add agents
-# bureau = Bureau()
-# # Ensure 'agent' is correctly imported or defined
-# from Data_generation_agent import Get_agent  # Adjust the import as necessary
-# data_generator_agent = Get_agent()
-# bureau.add(data_generator_agent)
-# bureau.add(PredictionAgent)
-
-if __name__ == "__main__":
-    PredictionAgent.run()
+        ctx.logger.error(f"Prediction failed: {e}")
