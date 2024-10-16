@@ -10,4 +10,5 @@ class Message(Model):
     body_water_content: int
     fatigue_level: int
     drowsiness_level: int
-    prediction: Optional[float] = None  # Added prediction field
+    prediction: Optional[float] = None 
+    

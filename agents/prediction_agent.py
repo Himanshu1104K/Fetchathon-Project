@@ -16,7 +16,7 @@ model = None  # Initialize at module level
 PredictionAgent = Agent(
     name="PredictionAgent",
     seed="prediction_seed",
-    # Removed endpoint as it's not used in this context
+    endpoint=["http://127.0.0.1:8002"],
 )
 
 
@@ -24,6 +24,7 @@ PredictionAgent = Agent(
 async def load_model(ctx: Context):
     global model
     try:
+        ctx.logger.info(f"Trying to load model from {model_file}")
         if not os.path.exists(model_file):
             ctx.logger.error(f"Model file not found at {model_file}.")
             model = None
@@ -38,6 +39,7 @@ async def load_model(ctx: Context):
 
 @PredictionAgent.on_message(model=Message)
 async def perform_prediction(ctx: Context, sender: str, msg: Message):
+    ctx.logger.info(f"Received message with data: {msg}")
     if model is None:
         ctx.logger.error("Model is not loaded. Cannot perform prediction.")
         return
@@ -75,9 +77,10 @@ async def perform_prediction(ctx: Context, sender: str, msg: Message):
         # Send prediction to CommunicationAgent
         from communication_agent import communication_agent
 
+        communication_agent_address = communication_agent.address
         if communication_agent:
             await ctx.send(
-                communication_agent.address,
+                communication_agent_address,
                 Message(
                     heart_rate=msg.heart_rate,
                     blood_pressure=msg.blood_pressure,
@@ -95,3 +98,6 @@ async def perform_prediction(ctx: Context, sender: str, msg: Message):
 
     except Exception as e:
         ctx.logger.error(f"Prediction failed: {e}")
+
+if __name__ == "__main__":
+    PredictionAgent.run()

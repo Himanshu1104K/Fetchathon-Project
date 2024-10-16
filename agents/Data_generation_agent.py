@@ -10,7 +10,7 @@ def generate_blood_pressure():
     return f"{systolic}/{diastolic}"
 
 
-agent = Agent(name="DataGenerator", seed="seed")
+agent = Agent(name="DataGenerator", seed="seed", endpoint=["http://127.0.0.1:8001"])
 
 
 def Get_agent():
@@ -32,7 +32,7 @@ async def initialize_storage(ctx: Context):
 async def data_transferring(ctx: Context):
     from Prediction_agent import (
         PredictionAgent,
-    )  # Ensure PredictionAgent is imported correctly
+    )  
 
     recipient_address = PredictionAgent.address
     if not recipient_address:
@@ -54,3 +54,6 @@ async def data_transferring(ctx: Context):
     ctx.logger.info(
         f"Sent health metrics to PredictionAgent: {ctx.storage.get('blood_pressure')}"
     )
+
+if __name__ == "__main__":
+    agent.run()

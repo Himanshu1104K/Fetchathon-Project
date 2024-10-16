@@ -16,14 +16,15 @@ import asyncio
 # JWT Constants
 JWT_SECRET_KEY = os.getenv(
     "JWT_SECRET_KEY", "fallback-default-key"
-)  # Ensure to set this in production
+)  
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 # FastAPI app setup
 app = FastAPI()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
-
+global shared_storage
+global predictions
 # Shared data between agents and HTTP
 shared_storage = {
     "health_metrics": {
@@ -146,18 +147,12 @@ async def plot_graph(request: Request, current_user: str = Depends(get_current_u
 
 
 # Importing necessary components for agents
-from common import (
-    Message,
-)  # Ensure 'common.py' exists and defines Message appropriately
-from Data_generation_agent import (
-    Get_agent,
-)  # Ensure 'Data_generation_agent.py' exists and defines Get_agent
-from Prediction_agent import (
-    PredictionAgent,
-)  # Ensure 'Prediction_agent.py' exists and defines PredictionAgent
+from common import Message
+from Data_generation_agent import Get_agent
+from Prediction_agent import PredictionAgent
 
 communication_agent = Agent(name="communication_agent")
-# Initialize the CustomBureau instead of the default Bureau
+
 bureau = Bureau()
 bureau.add(communication_agent)  # Add CommunicationAgent first
 bureau.add(Get_agent())  # Add DataGenerator
