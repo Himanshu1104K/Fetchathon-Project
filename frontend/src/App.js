@@ -10,7 +10,7 @@ function App() {
   const [error, setError] = useState("");
   const [token, setToken] = useState("");
   const [credentials, setCredentials] = useState({
-    username: "", 
+    username: "",
     password: "",
   });
   const [loadingData, setLoadingData] = useState(false);
@@ -18,7 +18,7 @@ function App() {
   const [loadingPrediction, setLoadingPrediction] = useState(false);
 
   // Base URL for API endpoints
-  const API_BASE_URL = "http://localhost:8000";
+  const API_BASE_URL = "http://localhost:9000";
 
   // Handle user login
   const handleLogin = () => {

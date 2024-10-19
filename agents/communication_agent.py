@@ -1,5 +1,3 @@
-# communication_agent.py
-
 from uagents import Agent, Context, Bureau
 from fastapi import FastAPI, Depends, HTTPException, status, Request
 from fastapi.responses import JSONResponse, StreamingResponse
@@ -14,9 +12,7 @@ import uvicorn
 import asyncio
 
 # JWT Constants
-JWT_SECRET_KEY = os.getenv(
-    "JWT_SECRET_KEY", "fallback-default-key"
-)  
+JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "fallback-default-key")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
@@ -148,14 +144,14 @@ async def plot_graph(request: Request, current_user: str = Depends(get_current_u
 
 # Importing necessary components for agents
 from common import Message
-from Data_generation_agent import Get_agent
+from Data_generation_agent import agent
 from Prediction_agent import PredictionAgent
 
 communication_agent = Agent(name="communication_agent")
 
 bureau = Bureau()
 bureau.add(communication_agent)  # Add CommunicationAgent first
-bureau.add(Get_agent())  # Add DataGenerator
+bureau.add(agent)  # Add DataGenerator
 bureau.add(PredictionAgent)  # Add PredictionAgent
 
 
@@ -181,7 +177,7 @@ async def receive_message(ctx: Context, sender: str, msg: Message):
 
 # Running FastAPI and the Communication Agent
 async def start_fastapi():
-    config = uvicorn.Config(app, host="0.0.0.0", port=8000, log_level="info")
+    config = uvicorn.Config(app, host="0.0.0.0", port=9000, log_level="info")
     server = uvicorn.Server(config)
     await server.serve()
 
